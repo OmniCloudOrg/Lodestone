@@ -2,7 +2,7 @@
 use crate::{prelude::*, service::Service};
 use sled::Db;
 use std::path::Path;
-use serde_json;
+use serde_json5;
 
 pub struct Store {
     db: Db,
@@ -32,7 +32,7 @@ impl Store {
     pub fn get(&self, key: &str) -> Result<Option<Service>> {
         if let Some(data) = self.db.get(key.as_bytes())
             .map_err(|e| Error::Storage(e.to_string()))? {
-            let service: Service = serde_json::from_slice(&data)
+            let service: Service = serde_json5::from_slice(&data)
                 .map_err(|e| Error::Storage(e.to_string()))?;
             Ok(Some(service))
         } else {
@@ -45,7 +45,7 @@ impl Store {
         
         for item in self.db.iter() {
             let (_, value) = item.map_err(|e| Error::Storage(e.to_string()))?;
-            let service: Service = serde_json::from_slice(&value)
+            let service: Service = serde_json5::from_slice(&value)
                 .map_err(|e| Error::Storage(e.to_string()))?;
             services.push(service);
         }
@@ -70,7 +70,7 @@ impl Store {
         
         for item in self.db.scan_prefix(prefix.as_bytes()) {
             let (_, value) = item.map_err(|e| Error::Storage(e.to_string()))?;
-            let service: Service = serde_json::from_slice(&value)
+            let service: Service = serde_json5::from_slice(&value)
                 .map_err(|e| Error::Storage(e.to_string()))?;
             services.push(service);
         }
