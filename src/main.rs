@@ -7,6 +7,7 @@ use slog::{Logger, Drain};
 
 mod config;
 mod consensus;
+mod discovery_old;
 mod discovery;
 mod router;
 mod security;
@@ -18,7 +19,7 @@ mod error;
 
 use crate::config::Settings;
 use crate::consensus::RaftNode;
-use crate::discovery::ServiceRegistry;
+use crate::discovery_old::ServiceRegistry;
 use crate::router::Router;
 use crate::security::TlsConfig;
 use crate::store::Store;

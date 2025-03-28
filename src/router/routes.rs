@@ -9,7 +9,7 @@ use axum::{
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use crate::{
-    discovery::ServiceRegistry, error::Error, service::Service
+    discovery_old::ServiceRegistry, error::Error, service::Service
 };
 
 pub struct Router {
