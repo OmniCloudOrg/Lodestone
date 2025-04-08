@@ -112,21 +112,7 @@ impl ApiServer {
         
         // Setup router routes
         let router_routes = self.setup_router_routes(&router);
-        
-    //    // Setup cluster routes if Raft is enabled
-    //    let cluster_routes = if raft_manager.is_some() {
-    //        self.setup_cluster_routes(raft_manager.clone().unwrap())
-    //    } else {
-    //        warp::any().boxed()
-    //    };
-    //    
-    //    // Setup Raft routes for internal communication
-    //    let raft_routes = if raft_manager.is_some() {
-    //        self.setup_raft_routes(raft_manager.unwrap())
-    //    } else {
-    //        warp::any().boxed()
-    //    };
-        
+
         // Setup metrics endpoint
         let metrics = warp::path!("metrics")
             .and(warp::get())
@@ -203,6 +189,9 @@ impl ApiServer {
     
     /// Setup router routes
     fn setup_router_routes(&self, router: &Arc<tokio::sync::Mutex<Router>>) -> BoxedFilter<(impl Reply,)> {
+        // Clone service registry
+        let service_registry = self.service_registry.clone();
+
         // Get all routes
         let get_routes = warp::path!("routes")
             .and(warp::get())
@@ -222,6 +211,7 @@ impl ApiServer {
             .and(warp::put())
             .and(warp::body::json())
             .and(with_router(router.clone()))
+            .and(with_registry(service_registry.clone()))
             .and_then(handle_upsert_route);
         
         // Delete a route
@@ -254,73 +244,6 @@ impl ApiServer {
                 .or(update_settings)
         ).boxed()
     }
-    
-//    /// Setup cluster routes
-// TODO: Implement cluster routes
-//     fn setup_cluster_routes(&self, raft_manager: RaftManager) -> BoxedFilter<(impl Reply,)> {
-//         // Get cluster status
-//         let cluster_status = warp::path!("cluster" / "status")
-//             .and(warp::get())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_cluster_status)
-//             .boxed();
-//         
-//         // Add a node to the cluster
-//         let add_node = warp::path!("cluster" / "nodes")
-//             .and(warp::post())
-//             .and(warp::body::json())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_add_node)
-//             .boxed();
-//         
-//         // Remove a node from the cluster
-//         let remove_node = warp::path!("cluster" / "nodes" / u64)
-//             .and(warp::delete())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_remove_node)
-//             .boxed();
-//         
-//         // Get cluster membership
-//         let membership = warp::path!("cluster" / "membership")
-//             .and(warp::get())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_membership);
-//         
-//         // Combine cluster routes
-//         warp::path("v1").and(
-//             cluster_status
-//                 .or(add_node)
-//                 .or(remove_node)
-//                 .or(membership)
-//         ).boxed()
-//     }
-    
-//    /// Setup Raft routes for internal communication
-//     fn setup_raft_routes(&self, raft_manager: RaftManager) -> BoxedFilter<(impl Reply,)> {
-//         // Handle vote requests
-//         let vote = warp::path!("raft" / "vote")
-//             .and(warp::post())
-//             .and(warp::body::json())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_vote);
-//         
-//         // Handle append entries requests
-//         let append = warp::path!("raft" / "append")
-//             .and(warp::post())
-//             .and(warp::body::json())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_append);
-//         
-//         // Handle install snapshot requests
-//         let snapshot = warp::path!("raft" / "snapshot")
-//             .and(warp::post())
-//             .and(warp::body::json())
-//             .and(with_raft_manager(&raft_manager))
-//             .and_then(handle_snapshot);
-//         
-//         // Combine Raft routes
-//         vote.or(append).or(snapshot).boxed()
-//     }
 }
 
 // Helper function to inject the service registry into route handlers
@@ -332,12 +255,6 @@ fn with_registry(registry: Arc<ServiceRegistry>) -> impl Filter<Extract = (Arc<S
 fn with_router(router: Arc<tokio::sync::Mutex<Router>>) -> impl Filter<Extract = (Arc<tokio::sync::Mutex<Router>>,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || router.clone())
 }
-
-// TODO: Implement Raft manager routes
-// // Helper function to inject the Raft manager into route handlers
-// fn with_raft_manager(manager: &RaftManager) -> impl Filter<Extract = (&RaftManager,), Error = std::convert::Infallible> + Clone {
-//     warp::any().map(move || manager.clone())
-// }
 
 /// Service registration request
 #[derive(Debug, Deserialize)]
@@ -372,40 +289,6 @@ struct RegisterServiceRequest {
 struct HealthUpdateRequest {
     /// New health status
     health: String,
-}
-
-/// Route configuration request
-#[derive(Debug, Deserialize)]
-struct RouteConfigRequest {
-    /// Upstream URL
-    upstream: String,
-    
-    /// Timeout in milliseconds
-    timeout_ms: Option<u64>,
-    
-    /// Number of retry attempts
-    retry_count: Option<u32>,
-    
-    /// Route priority
-    priority: Option<i32>,
-    
-    /// Preserve host header
-    preserve_host_header: Option<bool>,
-    
-    /// Is TCP route
-    is_tcp: Option<bool>,
-    
-    /// TCP listen port
-    tcp_listen_port: Option<u16>,
-    
-    /// Is UDP route
-    is_udp: Option<bool>,
-    
-    /// UDP listen port
-    udp_listen_port: Option<u16>,
-    
-    /// Database type
-    db_type: Option<String>,
 }
 
 /// TCP configuration request
@@ -675,56 +558,80 @@ Ok(warp::reply::with_status(
 ))
 }
 
+#[derive(Debug, Deserialize)]
+struct RouteConfigRequest {
+    /// Upstream URL (can now include service:// prefix)
+    upstream: String,
+    
+    /// Timeout in milliseconds
+    timeout_ms: Option<u64>,
+    
+    /// Number of retry attempts
+    retry_count: Option<u32>,
+    
+    /// Route priority
+    priority: Option<i32>,
+    
+    /// Preserve host header
+    preserve_host_header: Option<bool>,
+}
+
 /// Handle upserting a route
 async fn handle_upsert_route(
-_name: String,
-request: RouteConfigRequest,
-_router: Arc<tokio::sync::Mutex<Router>>,
+    name: String,
+    request: RouteConfigRequest,
+    router: Arc<tokio::sync::Mutex<Router>>,
+    service_registry: Arc<ServiceRegistry>,
 ) -> Result<impl Reply, Rejection> {
-// Convert request to route configuration
-let mut route_config = harbr_router::RouteConfig::new(&request.upstream);
+    // Check if this is a service-based route
+    let upstream = if request.upstream.starts_with("service://") {
+        let service_name = request.upstream.replace("service://", "");
+        
+        // Find healthy instances of the service
+        let instances = service_registry.get_healthy_instances(&service_name).await;
+        
+        if instances.is_empty() {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&error::<()>(&format!("No healthy instances for service {}", service_name))),
+                warp::http::StatusCode::BAD_REQUEST
+            ));
+        }
+        
+        // For now, just use the first healthy instance
+        // In a real implementation, you'd want more sophisticated load balancing
+        let instance = instances.first().unwrap();
+        format!("{}://{}:{}", instance.protocol, instance.host, instance.port)
+    } else {
+        request.upstream
+    };
 
-if let Some(timeout) = request.timeout_ms {
-    route_config = route_config.with_timeout(timeout);
-}
+    // Convert request to route configuration
+    let mut route_config = harbr_router::RouteConfig::new(&upstream);
 
-if let Some(retry_count) = request.retry_count {
-    route_config = route_config.with_retry_count(retry_count);
-}
+    if let Some(timeout) = request.timeout_ms {
+        route_config = route_config.with_timeout(timeout);
+    }
 
-if let Some(priority) = request.priority {
-    route_config = route_config.with_priority(priority);
-}
+    if let Some(retry_count) = request.retry_count {
+        route_config = route_config.with_retry_count(retry_count);
+    }
 
-if let Some(preserve) = request.preserve_host_header {
-    route_config = route_config.preserve_host_header(preserve);
-}
+    if let Some(priority) = request.priority {
+        route_config = route_config.with_priority(priority);
+    }
 
-if let Some(is_tcp) = request.is_tcp {
-    route_config = route_config.as_tcp(is_tcp);
-}
+    if let Some(preserve) = request.preserve_host_header {
+        route_config = route_config.preserve_host_header(preserve);
+    }
 
-if let Some(tcp_port) = request.tcp_listen_port {
-    route_config = route_config.with_tcp_listen_port(tcp_port);
-}
+    // Add route to router
+    let mut router_lock = router.lock().await;
+    router_lock.add_route(&name, route_config);
 
-if let Some(is_udp) = request.is_udp {
-    route_config = route_config.as_udp(is_udp);
-}
-
-if let Some(udp_port) = request.udp_listen_port {
-    route_config = route_config.with_udp_listen_port(udp_port);
-}
-
-if let Some(db_type) = &request.db_type {
-    route_config = route_config.with_db_type(db_type);
-}
-
-// Placeholder implementation
-Ok(warp::reply::with_status(
-    warp::reply::json(&success::<()>("Route updated successfully", None)),
-    warp::http::StatusCode::OK
-))
+    Ok(warp::reply::with_status(
+        warp::reply::json(&success::<()>("Route updated successfully", None)),
+        warp::http::StatusCode::OK
+    ))
 }
 
 /// Handle deleting a route

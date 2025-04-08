@@ -71,9 +71,51 @@ async fn main() -> anyhow::Result<()> {
     println!("Service registered with ID: {}", instance_id);
     
     // Discover services
-    let instances = client.discover_service("database").await?;
-    println!("Found {} database instances", instances.len());
+    let instances = client.discover_service("my-service").await?;
+    println!("Found {} service instances", instances.len());
     
+    Ok(())
+}
+```
+
+### Service Discovery and Dynamic Routing
+
+```rust
+use lodestone::client::LodestoneClient;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = LodestoneClient::new("http://127.0.0.1:8081");
+
+    // Register multiple database service instances
+    let db_instance1 = client.register_service(
+        "database", 
+        "192.168.1.100:5432", 
+        vec!["postgres".to_string(), "primary".to_string()]
+    ).await?;
+
+    let db_instance2 = client.register_service(
+        "database", 
+        "192.168.1.101:5432", 
+        vec!["postgres".to_string(), "replica".to_string()]
+    ).await?;
+
+    // Create a route that dynamically proxies to registered database services
+    client.add_service_route(
+        "/api/data",   // Local path to expose
+        "database",    // Service to proxy to
+        Some(RouteOptions {
+            timeout_ms: Some(5000),
+            retry_count: Some(2),
+            preserve_host_header: Some(true),
+        })
+    ).await?;
+
+    // Now any request to /api/data will:
+    // 1. Automatically route to a healthy "database" service
+    // 2. Use load balancing across registered instances
+    // 3. Fall back to another instance if one fails
+
     Ok(())
 }
 ```
