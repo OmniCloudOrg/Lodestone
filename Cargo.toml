@@ -4,37 +4,29 @@ version = "0.1.1"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.36", features = ["full"] }
-chrono = { version = "0.4", features = ["serde"] }  # Added serde feature
-axum = { version = "0.7.9", features = ["ws", "macros"] }
-reqwest = "0.11"
-tower = { version = "0.4", features = ["full"] }
-tower-http = { version = "0.5", features = ["full"] }
-hyper = { version = "1.1", features = ["full"] }
+anyhow = "1.0"
+clap = { version = "3.1", features = ["derive"] }
+tracing = { version = "0.1", features = ["log"] }
+toml = { version = "0.5", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json5 = "0.2.1"
-serde_json = "1.0.140"
-async-trait = "0.1"
-thiserror = "1.0"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-raft = "0.7"
-sled = "0.34"
-uuid = { version = "1.7", features = ["v4", "serde"] }
-rustls = "0.21"
-rustls-pemfile = "1.0"
-tokio-rustls = "0.24"
-jsonwebtoken = "9.2"
-dashmap = "5.5"
-futures = "0.3"
-tokio-tungstenite = "0.21"
-tower-layer = "0.3"
-slog = "2.7"
-slog-async = "2.8"
-slog-term = "2.9"
-bytes = "1.5"
-prost = "0.12"
-moka = { version = "0.12", features = ["future"] }
-config = "0.11"
-rand = "0.8"  # Added missing rand dependency
-tower-service = "0.3"  # Added for tower service traits
+serde_json = { version = "1.0", features = ["preserve_order"] }
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+bincode = { version = "2.0.1", features = ["derive"] }
+warp = { version = "0.3.7" }
+harbr_router = { version = "0.2.0" }
+reqwest = { version = "0.11", features = ["json"] }
+lazy_static = "1.4"
+async-trait = "0.1.50"
+bytes = "1.0"
+rand = { version = "0.8", features = ["std_rng"] }
+dashmap = { version = "6.1.0", features = ["serde"] }
+prometheus = { version = "0.14.0"}
+num_cpus = "1.13"
+openraft = "0.8"
+argon2 = { version = "0.5.3" }
+governor = { version = "0.10.0" }
+hostname = "0.4.0"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+ 

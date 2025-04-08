@@ -2,191 +2,195 @@
 <img align="right" src="https://github.com/user-attachments/assets/0396c028-f92c-4fbe-9b0e-b142d12144d1" alt="Lodestone Logo" width="200"/>
 </div>
 
-# Lodestone
+# Lodestone: High-Performance Service Discovery and Routing System
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <strong>A lightweight service registry and intelligent routing system built on Harbr-Router</strong>
+</p>
 
-A high-performance, distributed service discovery and routing system written in Rust.
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#concepts">Concepts</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#api">API</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#deployment">Deployment</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
 
 ## Features
 
-### Core Functionality
-- 🔍 **Service Discovery**: Dynamic registration and discovery of services
-- 🌐 **Load Balancing**: Intelligent request distribution
-- 🔒 **Security**: Built-in TLS, authentication, and authorization
-- 🔄 **High Availability**: Raft consensus for reliable operation
-
-### Technical Features
-- **Consensus**
-  - Raft-based leader election
-  - State replication
-  - Consistent service registry
-
-- **Enhanced Routing**
-  - Round-robin load balancing
-  - Circuit breaker pattern
-  - Route caching with TTL
-  - WebSocket support
-
-- **Security**
-  - TLS/SSL support
-  - JWT-based authentication
-  - Role-based authorization
-  - Rate limiting
-
-## Architecture
-
-```mermaid
-graph TD
-    A[Client] --> B[Load Balancer]
-    B --> C[Lodestone Cluster]
-    C --> D[Raft Consensus]
-    C --> E[Service Registry]
-    C --> F[Health Checker]
-    E --> G[Service 1]
-    E --> H[Service 2]
-    E --> I[Service N]
-```
+- 🔍 **Service Discovery**: Automatic registration, health checking, and deregistration
+- 🔀 **Dynamic Routing**: Zero-downtime route updates across HTTP, TCP, and UDP protocols
+- 🩺 **Health Checking**: HTTP, TCP, custom script, and TTL-based health checks
+- 🚦 **Load Balancing**: Round-robin, weighted, and health-aware routing
+- 📊 **Metrics & Monitoring**: Prometheus-compatible metrics for observability
+- 🔑 **Security**: TLS encryption and authentication
+- 📚 **API & CLI**: Fully featured HTTP API and command-line interface
+- 🧩 **Client Libraries**: Easy integration for applications
+- 🏢 **Multi-Protocol**: Support for HTTP, TCP, UDP, and database protocols
 
 ## Quick Start
 
-### Prerequisites
-- Rust 1.75 or higher
-- Cargo
-- OpenSSL development packages
-
-### Installation
+### Install with Cargo
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/lodestone.git
-cd lodestone
-
-# Build the project
-cargo build --release
+cargo install lodestone
 ```
 
-### WARNING
+### Start a Node
 
-In production usage replace all keys and certs with your own these are in the repo for convenience purposes and should not be used on public instances or for any serious deployment
-
-### Basic Usage
-
-1. **Start the server**:
 ```bash
-cargo run --release
+lodestone --node-id node1 --bind-addr 127.0.0.1 --data-dir ./data
 ```
 
-2. **Register a service**:
+### Register a Service
+
 ```bash
-curl -X POST http://localhost:8080/services \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "my-service",
-    "address": "localhost",
-    "port": 8000
-  }'
+lodestone service register my-service 127.0.0.1:8080 --tags web,api
 ```
 
-3. **Query services**:
-```bash
-curl http://localhost:8080/services
+### Using the Client Library
+
+```rust
+use lodestone::client::LodestoneClient;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = LodestoneClient::new("http://127.0.0.1:8081");
+    
+    // Register a service
+    let instance_id = client.register_service(
+        "my-service", 
+        "127.0.0.1:8080", 
+        vec!["web".to_string()]
+    ).await?;
+    
+    println!("Service registered with ID: {}", instance_id);
+    
+    // Discover services
+    let instances = client.discover_service("database").await?;
+    println!("Found {} database instances", instances.len());
+    
+    Ok(())
+}
 ```
+
+## Concepts
+
+### Service Registry
+
+The **Service Registry** is a catalog of available services and their instances. It provides:
+
+- **Service Registration**: Add new service instances to the registry
+- **Service Discovery**: Find service instances by name or tags
+- **Health Monitoring**: Track the health status of services
+- **TTL and Heartbeats**: Automatic deregistration of failed services
+
+### Dynamic Router
+
+The **Dynamic Router** directs traffic to healthy services with zero-downtime configuration changes:
+
+- **Path-Based Routing**: Route HTTP requests based on URL paths
+- **Protocol Support**: Handle HTTP, TCP, UDP, and database traffic
+- **Health-Aware**: Only route to healthy instances
+- **Load Balancing**: Distribute traffic optimally across instances
+- **Retries and Timeouts**: Ensure request reliability
+
+## Architecture
+
+Lodestone consists of several key components:
+
+- **Service Registry**: Maintains the catalog of services and instances
+- **Health Checker**: Monitors service health using various strategies
+- **Router**: Directs traffic to healthy service instances
+- **API Server**: Provides HTTP API for management and integration
+- **Storage Layer**: Persists data using local file storage
 
 ## Configuration
 
-Lodestone uses TOML for configuration. Create a `config/default.toml` file:
+Lodestone uses a TOML configuration file:
 
 ```toml
-[server]
-host = "127.0.0.1"
-port = 8080
+# General node configuration
+[node]
+id = "node1"
+name = "primary-node"
+bind_ip = "0.0.0.0"
+router_port = 8080
+api_port = 8081
+data_dir = "./data"
+tags = ["primary"]
 
+# Router configuration
+[router]
+global_timeout_ms = 30000
+max_connections = 10000
+enable_retries = true
+default_retry_count = 3
+
+# Service discovery configuration
+[discovery]
+health_check_interval_secs = 10
+health_check_timeout_ms = 2000
+default_health_check_path = "/health"
+service_ttl_secs = 60
+deregistration_delay_secs = 30
+
+# Security configuration
 [security]
-jwt_secret = "your-secret-key"
-cert_path = "certs/server.crt"
-key_path = "certs/server.key"
-
-[raft]
-node_id = 1
-peers = [2, 3]
-election_timeout = 1000
-heartbeat_interval = 100
+tls_enabled = false
+api_auth_enabled = false
 ```
 
-## API Reference
+## Deployment
 
-### Service Management
-- `POST /services` - Register a new service
-- `GET /services` - List all services
-- `GET /services/{id}` - Get service details
-- `DELETE /services/{id}` - Deregister a service
+### Docker
 
-### Health Checking
-- `GET /health` - System health check
-- `GET /services/{id}/health` - Service health check
+```dockerfile
+FROM rust:1.70 as builder
+WORKDIR /usr/src/lodestone
+COPY . .
+RUN cargo build --release
 
-### Cluster Management
-- `GET /cluster/status` - Get cluster status
-- `GET /cluster/members` - List cluster members
-
-## Development
-
-### Project Structure
-```
-lodestone/
-├── src/
-│   ├── consensus/     # Raft consensus implementation
-│   ├── discovery/     # Service discovery logic
-│   ├── router/        # Request routing and load balancing
-│   ├── security/      # Authentication and authorization
-│   ├── store/         # Persistent storage
-│   └── types.rs       # Common types and errors
-├── config/
-│   └── default.toml   # Default configuration
-└── tests/             # Integration tests
+FROM debian:bullseye-slim
+RUN apt-get update && apt-get install -y ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/src/lodestone/target/release/lodestone /usr/local/bin/
+RUN mkdir -p /etc/lodestone /data/lodestone
+ENV CONFIG_FILE="/etc/lodestone/config.toml"
+EXPOSE 8080 8081
+ENTRYPOINT ["lodestone"]
+CMD ["-c", "/etc/lodestone/config.toml"]
 ```
 
-### Running Tests
-```bash
-# Run all tests
-cargo test
+## Production Best Practices
 
-# Run specific test suite
-cargo test --test integration_tests
-```
-
-## Performance
-
-Performance benchmarks on a standard machine (8 CPU, 16GB RAM):
-
-- Service Registration: < 5ms
-- Service Discovery: < 2ms
-- Route Resolution: < 1ms
-- Concurrent Connections: 10,000+
+1. **Data Persistence**: Use persistent storage for the data directory
+2. **Security**: Enable TLS and API authentication
+3. **Monitoring**: Configure Prometheus and Grafana dashboards
+4. **Health Checks**: Custom health checks for accurate service status
+5. **Load Balancing**: Use weighted load balancing for heterogeneous environments
+6. **Graceful Shutdown**: Properly deregister services during shutdown
+7. **Timeouts**: Configure appropriate timeouts for your services
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- Built with [Rust](https://www.rust-lang.org/)
-- Uses [Raft](https://raft.github.io/) consensus algorithm
-- Inspired by Consul and Cloud Foundry's Go Router
-
----
-
-<div align="center">
-Made with ❤️ by the Lodestone team
-</div>
+- [Harbr-Router](https://github.com/example/harbr-router) - High-performance routing library
+- [Tokio](https://tokio.rs/) - Async runtime
+- [Warp](https://github.com/seanmonstar/warp) - Web framework
