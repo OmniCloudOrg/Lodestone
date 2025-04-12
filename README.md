@@ -233,6 +233,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Acknowledgments
 
-- [Harbr-Router](https://github.com/example/harbr-router) - High-performance routing library
+- [Harbr-Router](https://github.com/harbr-foundation/harbr-router) - High-performance routing library
 - [Tokio](https://tokio.rs/) - Async runtime
 - [Warp](https://github.com/seanmonstar/warp) - Web framework
