@@ -29,4 +29,3 @@ argon2 = { version = "0.5.3" }
 governor = { version = "0.10.0" }
 hostname = "0.4.0"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
- 
