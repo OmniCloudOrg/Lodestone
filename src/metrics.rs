@@ -19,36 +19,36 @@ lazy_static! {
         "lodestone_service_registered_total",
         "Total number of service instances registered",
         &["service_name"]
-    ).unwrap();
+    ).expect("Failed to register SERVICE_REGISTERED_COUNTER");
 
     static ref SERVICE_DEREGISTERED_COUNTER: IntCounterVec = register_int_counter_vec!(
         "lodestone_service_deregistered_total", 
         "Total number of service instances deregistered",
         &["service_name"]
-    ).unwrap();
+    ).expect("Failed to register SERVICE_DEREGISTERED_COUNTER");
 
     static ref SERVICE_HEALTH_CHECK_COUNTER: IntCounterVec = register_int_counter_vec!(
         "lodestone_service_health_check_total",
         "Total number of service health checks",
         &["service_name", "result"]
-    ).unwrap();
+    ).expect("Failed to register SERVICE_HEALTH_CHECK_COUNTER");
 
     static ref SERVICE_INSTANCE_GAUGE: Gauge = register_gauge!(
         "lodestone_service_instances",
         "Current number of registered service instances"
-    ).unwrap();
+    ).expect("Failed to register SERVICE_INSTANCE_GAUGE");
 
     static ref SERVICE_HEALTHY_GAUGE: Gauge = register_gauge!(
         "lodestone_service_healthy_instances",
         "Current number of healthy service instances"
-    ).unwrap();
+    ).expect("Failed to register SERVICE_HEALTHY_GAUGE");
 
     // Router metrics
     static ref ROUTER_REQUEST_COUNTER: IntCounterVec = register_int_counter_vec!(
         "lodestone_router_requests_total",
         "Total number of requests processed by the router",
         &["route", "status"]
-    ).unwrap();
+    ).expect("Failed to register ROUTER_REQUEST_COUNTER");
 
     static ref ROUTER_REQUEST_DURATION: HistogramVec = {
         let opts = HistogramOpts::new(
@@ -57,29 +57,29 @@ lazy_static! {
         )
         .buckets(vec![0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]);
         
-        prometheus::register_histogram_vec!(opts, &["route"]).unwrap()
+        prometheus::register_histogram_vec!(opts, &["route"]).expect("Failed to register ROUTER_REQUEST_DURATION")
     };
 
     static ref ROUTER_ACTIVE_CONNECTIONS: Gauge = register_gauge!(
         "lodestone_router_active_connections",
         "Current number of active connections"
-    ).unwrap();
+    ).expect("Failed to register ROUTER_ACTIVE_CONNECTIONS");
 
     // Raft metrics
     static ref RAFT_LEADER_CHANGES: Counter = register_counter!(
         "lodestone_raft_leader_changes_total",
         "Total number of Raft leader changes"
-    ).unwrap();
+    ).expect("Failed to register RAFT_LEADER_CHANGES");
 
     static ref RAFT_COMMIT_INDEX: Gauge = register_gauge!(
         "lodestone_raft_commit_index",
         "Current Raft commit index"
-    ).unwrap();
+    ).expect("Failed to register RAFT_COMMIT_INDEX");
 
     static ref RAFT_LOG_SIZE: Gauge = register_gauge!(
         "lodestone_raft_log_size",
         "Current size of the Raft log in entries"
-    ).unwrap();
+    ).expect("Failed to register RAFT_LOG_SIZE");
 
     static ref RAFT_APPLY_DURATION: Histogram = register_histogram!(
         HistogramOpts::new(
@@ -87,7 +87,7 @@ lazy_static! {
             "Time taken to apply Raft operations"
         )
         .buckets(vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5])
-    ).unwrap();
+    ).expect("Failed to register RAFT_APPLY_DURATION");
 }
 
 /// Initialize metrics
